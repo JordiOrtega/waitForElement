@@ -7,7 +7,8 @@ export const waitForElement = function(values) {
   var isTestingMode = values.testingTimeout || false;
   var handleOk = values.handleOk || false;
   var handleError = values.handleError || false;
-  var promiseFullfilled;
+  var handleAlways = values.handleAlways || false;
+  var promiseFulfilled;
   var promiseRejected;
 
   if (elementToWaitFor === false) {
@@ -19,14 +20,14 @@ export const waitForElement = function(values) {
     //función que devuelve otra f(x) pendiente del parámetro para aceptar o rechazar la promesa.
     var ejecutaPromesa = aceptar_o_rechazar => actions =>
       aceptar_o_rechazar(actions);
-    promiseFullfilled = ejecutaPromesa(resolve);
+    promiseFulfilled = ejecutaPromesa(resolve);
     promiseRejected = ejecutaPromesa(reject);
   });
 
   (function lookingForElement() {
     !$(elementToWaitFor).length
       ? window.requestAnimationFrame(lookingForElement)
-      : promiseFullfilled("done");
+      : promiseFulfilled("Promise fulfilled");
   })();
 
   var rejectPromise = () => {
@@ -41,20 +42,21 @@ export const waitForElement = function(values) {
 
   maxTimeWaiting && rejectPromise();
   var handleResult = argumentos => {
-    if (Array.isArray(handleOk)) {
-      argumentos.ok
+    argumentos.ok
+      ? Array.isArray(handleOk)
         ? handleOk.forEach(e => e(argumentos))
-        : handleError(argumentos);
-    } else {
-      argumentos.ok ? handleOk(argumentos) : handleError(argumentos);
-    }
+        : handleOk(argumentos)
+      : Array.isArray(handleError)
+      ? handleError.forEach(e => e(argumentos))
+      : handleError(argumentos);
   };
+
   sureThing(waitPromise)
     .then(argumentos => {
       handleResult(argumentos);
       return argumentos;
     })
-    .then(() => console.log("Execute always"));
+    .then(() => handleAlways && handleAlways());
 
   return handleOk ? true : sureThing(waitPromise);
 };
